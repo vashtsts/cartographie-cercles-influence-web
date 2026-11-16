@@ -666,7 +666,18 @@ function marges() {
 }
 const vol = { duration: MOUVEMENT_REDUIT ? 0 : 1.1, easeLinearity: 0.2 };
 function cadrer(route) {
-  const cadre = (bornes) => carte.flyToBounds(bornes, { ...marges(), ...vol });
+  // Sur un petit écran (téléphone à l'horizontale, fenêtre étroite), les marges peuvent dépasser la carte et
+  // l'animation ne sait plus calculer son zoom : on cadre alors sans marges ni animation.
+  const cadre = (bornes) => {
+    const m = marges();
+    const taille = carte.getSize();
+    const libre = taille.x - m.paddingTopLeft[0] - m.paddingBottomRight[0] > 80
+      && taille.y - m.paddingTopLeft[1] - m.paddingBottomRight[1] > 80;
+    if (!libre || !Number.isFinite(carte.getBoundsZoom(bornes, false, L.point(m.paddingTopLeft).add(m.paddingBottomRight)))) {
+      return carte.fitBounds(bornes, { animate: false });
+    }
+    carte.flyToBounds(bornes, { ...m, ...vol });
+  };
   if (route.type === 'departement') {
     const dep = DONNEES.departements.features.find((d) => d.properties.code === route.valeur);
     if (dep) return cadre(L.geoJSON(dep).getBounds());
